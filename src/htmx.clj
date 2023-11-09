@@ -1,18 +1,31 @@
 (ns htmx
   (:require [elements :refer :all]
-            [store :refer [watch]]
+            [store :refer [watch register-store combine-reducers dispatch]]
             [org.httpkit.server :as hk-server]
             [clojure.string :as s]
             [clojure.java.shell :refer [sh]]))
 
-(def the-count (atom 0))
-(def current-fn (atom nil))
+(defn ripgrep [term]
+  (let [out (sh "rg" term "/home/rafa" )]
+    (s/split (:out out) #"\n")))
 
-;; Essa funcao vai ser extraida da macro.
-;; E sera chamada imediatamente passando o parametro da store
-(defn dentro-do-with-store [param]
-  (reset! current-fn dentro-do-with-store)
-  (div param))
+(defn count-reducer [state action]
+  (if (= (:type action "UPDATE_COUNTER"))
+    (:count action)
+    0))
+(defn results-reducer [state action]
+  (println "called")
+  (println action)
+  (println state)
+  (if (= (:type action) "SEARCH")
+    {:data (ripgrep (:term action)) :term (:term action)}
+    {:data [] :term ""}))
+
+(register-store (combine-reducers {:count count-reducer
+                                   :results results-reducer}))
+
+(defn- highlight [term line]
+  (s/replace line term (strong term)))
 
 (defn index [_]
   (html {:lang "en-US"}
@@ -22,77 +35,52 @@
                :crossorigin "anonymous"}))
      (link {:href "/public/tail.css" :rel "stylesheet"})
      (body
-       ;; (with-store [user :user-info] ;; automagicamente usa o store/store namespace
-       ;;   (div (-> user :name))) ;;// SSE? socket? (tornar opcional) (Htmx headers!)
-       ;; (div "Normal")
-       (h1 {:class "text-3xl"} "RipGrep")
-       ;; Esse eh o with-store:
-       (watch [users :users]
-         (div (-> users first :name)))
-       (span {:hx-trigger "onNomeDaChaveUpdate from:body"
-              :hx-swap "innerHTML"
-              :hx-get "/partial"} ;; ?funcId=idDafunc que ficara num hashtable global
-             (dentro-do-with-store "Vai Mano"))
-       ;; Fim da macro
+       (h1 {:class "text-3xl"} "RipGrep WebUI")
+       (watch [results :results]
+         (span (str "The count is: " (count (:data results)))))
        (div {:class "flex flex-col items-stretch flex-wrap items-center shadow-lg rounded-xl max-w-lg mx-auto p-6"}
-         (form {:hx-trigger "submit"
-                :hx-target "#results-div"
-                :hx-swap "outerHTML"
-                :hx-post "/results"
-                :class "flex grow gap-x-2"}
-               (input {:type "text"
-                       :name "term"
-                       :class "grow"
-                       :placeholder "Search using RipGrep on ~"})
-               (button {:type "submit" :class "bg-sky-500 hover:bg-sky-700 rounded-full text-sm text-white font-semibold px-5 py-2"} "Search"))
-         (div {:id "result-count"
-               :hx-trigger "onCount from:body"
-               :hx-get "/result-count"})
-         (div {:id "results-div"}))
-       (button {:type "button"
-                :hx-trigger "click"
-                :hx-post "/trigger/update-users"})
-       ;; (button {:on-click #(store/dispatch {:type "EITA_ACTION"})} "Hello") ;; Esses eventos virao via HTTP. Precisa imaginar como :)
-       ;; (form {:on-submit #(handle-submit)})
-       )))
-
-(defn- highlight [term line]
-  (s/replace line term (strong term)))
+            (form {:hx-trigger "submit"
+                   :hx-swap "none"
+                   :hx-post "/results"
+                   :class "flex grow gap-x-2"}
+                  (input {:type "text"
+                          :name "term"
+                          :class "grow"
+                          :placeholder "Search using RipGrep on ~"})
+                  (button {:type "submit" :class "bg-sky-500 hover:bg-sky-700 rounded-full text-sm text-white font-semibold px-5 py-2"} "Search"))
+            (watch [results :results]
+              (let [data (:data results)
+                    term (:term results)
+                    _ (println results)]
+                (div {:id "results-div"}
+                     (div (str "Found " (count data) " Results"))
+                     (ul
+                       (->> data
+                            (map (partial highlight term))
+                            (map #(li %)))))))))))
 
 (defn results [req]
   (let [body (slurp (:body req))
-        term (second (s/split body #"="))
-        out (sh "rg" term "/home/rafa" )
-        lines (s/split (:out out) #"\n")]
-    (reset! the-count (count lines))
-    (div {:id "results-div"}
-      (div "Results")
-      (ul
-        (->> lines
-             (map (partial highlight term))
-             (map #(li %)))))))
-
-(defn get-count [_] (div @the-count))
+        term (second (s/split body #"="))]
+    (dispatch {:type "SEARCH" :term term})
+    ""))
 
 (defn static [_] (slurp "./public/tail.css"))
-
-(defn auto-partial [req]
-  ;; Aqui precisa mandar o header "onNomeDaChaveUpdate"
-  (@current-fn "vish"))
-
 (def pages {"/" #(index %)
             "/results" #(results %)
-            "/result-count" #(get-count %)
-            "/partial" #(auto-partial %)
             "/public/tail.css" #(static %)})
 
-(defn meu-middleware [handler] ;; Esse Middleware vai ser responsavel por adicionar os headers necessarios para os updates
+(defn updated-headers-middleware [handler] 
   (fn [request]
-    (if (= (:uri request) "/tapreula")
-      {:status 200
-        :headers {"content-type" "text/html"}
-        :body "Mano, interceptei"}
+    (if (:original-store request)
+      (let [response (handler request)
+            headers (assoc (:headers response) "HX-Trigger" (store/get-update-headers (:original-store request)))]
+        (assoc response :headers headers))
       (handler request))))
+
+(defn store-changes-middleware [handler]
+  (fn [request]
+    (handler (assoc request :original-store (store/get-state)))))
 
 ;; Fluxo da coisa toda:
 ;; Macro cria uma funcao com o conteudo dela e salva ela usando uma chave aleatoria.
@@ -106,13 +94,12 @@
 ;; na memoria, fazendo com que precise executar ela de novo se fizer um refresh na pagina
 ;; Futuro: Criar um middleware para actions: POST /actions/nome-da-action {body em edn}
 ;; Aih pode chamar usando :dispatch {:on :evento /*htmx, ex click*/ :type "mark-read" :params {:param 1 "a"})
+;; Agora falta criar componentes htmx hx-form, hx-button, etc que fazem todo
+;; o malabarismo para fazer o dispatch automagico
 
 (defn page-handler [routes request]
   (let [page (get routes (:uri request))
-        headers {"content-type" "text/html"}
-        headers (if (= (:uri request) "/results")
-                  (assoc headers "HX-Trigger" "onCount,onNomeDaChaveUpdate")
-                  headers)]
+        headers {"content-type" "text/html"}]
     (if page
       {:status 200
        :headers headers
@@ -122,10 +109,21 @@
        :headers headers
        :body "Not Found"})))
 
-;; (http/start 8082 (partial page-handler pages))
+(defn handle-store-updates [handler]
+  (fn [request]
+    (if (s/starts-with? (:uri request) "/store-updates")
+      (let [uri (:uri request)
+            fn-key (subs uri (inc (s/last-index-of uri "/")))
+            func (store/get-fn fn-key)]
+        {:status 200
+         :headers {"content-type" "text/html"}
+         :body (func)})
+      (handler request))))
 
-(def stop-http (hk-server/run-server (-> (partial page-handler pages)
-                                         (meu-middleware)) {:port 8082}))
+  (def stop-http (hk-server/run-server (-> (partial page-handler pages)
+                                           handle-store-updates
+                                           updated-headers-middleware
+                                           store-changes-middleware ) {:port 8082}))
 
 ;; Can I use this only as an htmx template? Absolutelly!
 
@@ -134,11 +132,14 @@
 ;;   on-* events (precisa tratar eles de maneira diferente, preferencialmente via macro)
 ;;OK transformar o create-element em macro
 ;;   adicionar a store (copiar uma que ja funciona ou basear na do Java/heater)
-;;   criar a macro with-store
-;; remover os parent-id (desnecessario com a with-store/watch macro)
-;; Fazer o map funcionar
+;;OK   criar a macro with-store
+;;OK remover os parent-id (desnecessario com a with-store/watch macro)
+;;OK Fazer o map funcionar
 ;; Mosaic Presenter (le todas imagens da pasta e faz uma apresentacao aleatoria de 2 em 2 imagens)
 ;; Usar o hx-select pra mandar uma resposta só que atualiza todos os componentes visiveis
 ;; Assim: quando usar o with-store, marca o elemento com hx-select e um id.
 ;; Aí na resposta, manda esse elemento sempre junto caso exista
 ;; Precisa testar: O que acontece quando nao vai o id? como atualizar o resto sem o watched
+
+  ;; PAREI AQUI: Fazer agora o results do ripgrep vir da store
+  ;; e manter o valor do input? (pode ser feito via um eventual hx-input que sabe se eh um re-render ou se eh o primeiro render)
