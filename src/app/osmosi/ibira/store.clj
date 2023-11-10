@@ -1,4 +1,4 @@
-(ns store)
+(ns app.osmosi.ibira.store)
 
 (def store (atom {}))
 
@@ -23,7 +23,7 @@
      (swap! store assoc-in [store-name] {:state new-state :reducer (:reducer old-store)}))))
 
 (defn get-state
-  ([] (get-store "default"))
+  ([] (get-state "default"))
   ([name] (get-in @store [name :state])))
 
 (defn get-update-headers
@@ -52,13 +52,13 @@
         fn-hash (str (hash body) (hash watch-vector))
         var-name (first watch-vector)
         func-sym (gensym "func")]
-    (list 'elements/element-with-props-and-children
+    (list 'app.osmosi.ibira.elements/element-with-props-and-children
           "span"
           (hash-map :hx-trigger (str "on-" store-name "-" (name store-key) "-update from:body")
                     :hx-swap "innerHTML"
                     :hx-get (str "/store-updates/" fn-hash))
-          (list 'let (vector func-sym (list 'fn '[] (apply list 'let (vector var-name (list 'get (list 'store/get-state store-name) store-key)) body)))
-                (list 'store/store-fn fn-hash func-sym)
+          (list 'let (vector func-sym (list 'fn '[] (apply list 'let (vector var-name (list 'get (list 'app.osmosi.ibira.store/get-state store-name) store-key)) body)))
+                (list 'app.osmosi.ibira.store/store-fn fn-hash func-sym)
                 (list func-sym)))))
 
 (defmacro watch-store [store-name watch-vector & body]

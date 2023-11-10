@@ -1,4 +1,4 @@
-(ns elements)
+(ns app.osmosi.ibira.elements)
 
 (def void-elements #{"area"
                     "base"
@@ -58,18 +58,18 @@
   (if (has-props args)
     (if (empty? (rest args))
       (if (contains? void-elements tag-name)
-        (list 'elements/void-element-with-props tag-name (first args))
-        (list 'elements/element-with-props tag-name (first args)))
+        (list 'app.osmosi.ibira.elements/void-element-with-props tag-name (first args))
+        (list 'app.osmosi.ibira.elements/element-with-props tag-name (first args)))
       (if (string? (second args))
-        (list 'elements/element-with-props-and-string-child tag-name (first args) (second args))
-        (apply list 'elements/element-with-props-and-children tag-name (first args) (rest args))))
+        (list 'app.osmosi.ibira.elements/element-with-props-and-string-child tag-name (first args) (second args))
+        (apply list 'app.osmosi.ibira.elements/element-with-props-and-children tag-name (first args) (rest args))))
     (if (empty? args)
       (if (contains? void-elements tag-name)
-        (list 'elements/void-element-empty tag-name)
-        (list 'elements/element-empty tag-name))
+        (list 'app.osmosi.ibira.elements/void-element-empty tag-name)
+        (list 'app.osmosi.ibira.elements/element-empty tag-name))
       (if (string? (first args))
-        (list 'elements/element-with-string-child tag-name (first args))
-        (apply list 'elements/element-with-children tag-name args))))) 
+        (list 'app.osmosi.ibira.elements/element-with-string-child tag-name (first args))
+        (apply list 'app.osmosi.ibira.elements/element-with-children tag-name args))))) 
 
 (defmacro html [& args] (apply create-element "html" args))
 (defmacro head [& args] (apply create-element "head" args))

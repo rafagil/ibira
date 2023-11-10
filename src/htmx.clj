@@ -1,6 +1,6 @@
 (ns htmx
-  (:require [elements :refer :all]
-            [store :refer [watch register-store combine-reducers dispatch]]
+  (:require [app.osmosi.ibira.elements :refer :all]
+            [app.osmosi.ibira.store :refer [watch register-store combine-reducers dispatch] :as store]
             [org.httpkit.server :as hk-server]
             [clojure.string :as s]
             [clojure.java.shell :refer [sh]]))
@@ -14,9 +14,6 @@
     (:count action)
     0))
 (defn results-reducer [state action]
-  (println "called")
-  (println action)
-  (println state)
   (if (= (:type action) "SEARCH")
     {:data (ripgrep (:term action)) :term (:term action)}
     {:data [] :term ""}))
