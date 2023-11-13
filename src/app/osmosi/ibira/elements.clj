@@ -89,5 +89,6 @@
 (defmacro button [& args] (apply create-element "button" args))
 (defmacro br [& args] (apply create-element "br" args))
 (defmacro strong [& args] (apply create-element "strong" args))
+(defmacro img [& args] (apply create-element "img" args))
 
 ;; (clojure.walk/macroexpand-all '(html (head) (title) (div (pre)) (div {:a "b"}) (div)))

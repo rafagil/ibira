@@ -1,4 +1,21 @@
 {:deps
  ;;{org.clojure/core.async {:mvn/version "1.6.681"}}
  {http-kit/http-kit {:mvn/version "2.7.0"}}
+ :paths ["src"]
+ :aliases
+ ;; {
+ ;;  :build {:deps {io.github.clojure/tools.build {:git/tag "v0.9.6" :git/sha "8e78bcc"}}
+ ;;          :ns-default build}}
+
+
+
+  {:depstar
+  {:replace-deps
+   {com.github.seancorfield/depstar {:mvn/version "2.0.206"}}
+   :ns-default core
+   :exec-fn hf.depstar/uberjar
+   :exec-args {:jar app.jar
+               :aot true
+               :compile-ns [eita.noiz.slides]
+               :main-class "eita.noiz.slides"}}}
  }

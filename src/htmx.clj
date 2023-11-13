@@ -1,6 +1,7 @@
 (ns htmx
   (:require [app.osmosi.ibira.elements :refer :all]
             [app.osmosi.ibira.store :refer [watch register-store combine-reducers dispatch] :as store]
+            [app.osmosi.ibira.middleware :refer [handle-store-updates monitor-store-changes]]
             [org.httpkit.server :as hk-server]
             [clojure.string :as s]
             [clojure.java.shell :refer [sh]]))
@@ -47,8 +48,7 @@
                   (button {:type "submit" :class "bg-sky-500 hover:bg-sky-700 rounded-full text-sm text-white font-semibold px-5 py-2"} "Search"))
             (watch [results :results]
               (let [data (:data results)
-                    term (:term results)
-                    _ (println results)]
+                    term (:term results)]
                 (div {:id "results-div"}
                      (div (str "Found " (count data) " Results"))
                      (ul
@@ -66,18 +66,6 @@
 (def pages {"/" #(index %)
             "/results" #(results %)
             "/public/tail.css" #(static %)})
-
-(defn updated-headers-middleware [handler] 
-  (fn [request]
-    (if (:original-store request)
-      (let [response (handler request)
-            headers (assoc (:headers response) "HX-Trigger" (store/get-update-headers (:original-store request)))]
-        (assoc response :headers headers))
-      (handler request))))
-
-(defn store-changes-middleware [handler]
-  (fn [request]
-    (handler (assoc request :original-store (store/get-state)))))
 
 ;; Fluxo da coisa toda:
 ;; Macro cria uma funcao com o conteudo dela e salva ela usando uma chave aleatoria.
@@ -106,21 +94,9 @@
        :headers headers
        :body "Not Found"})))
 
-(defn handle-store-updates [handler]
-  (fn [request]
-    (if (s/starts-with? (:uri request) "/store-updates")
-      (let [uri (:uri request)
-            fn-key (subs uri (inc (s/last-index-of uri "/")))
-            func (store/get-fn fn-key)]
-        {:status 200
-         :headers {"content-type" "text/html"}
-         :body (func)})
-      (handler request))))
-
-  (def stop-http (hk-server/run-server (-> (partial page-handler pages)
-                                           handle-store-updates
-                                           updated-headers-middleware
-                                           store-changes-middleware ) {:port 8082}))
+(def stop-http (hk-server/run-server (-> (partial page-handler pages)
+                                         monitor-store-changes
+                                         handle-store-updates ) {:port 8082}))
 
 ;; Can I use this only as an htmx template? Absolutelly!
 
@@ -132,11 +108,8 @@
 ;;OK   criar a macro with-store
 ;;OK remover os parent-id (desnecessario com a with-store/watch macro)
 ;;OK Fazer o map funcionar
-;; Mosaic Presenter (le todas imagens da pasta e faz uma apresentacao aleatoria de 2 em 2 imagens)
 ;; Usar o hx-select pra mandar uma resposta só que atualiza todos os componentes visiveis
 ;; Assim: quando usar o with-store, marca o elemento com hx-select e um id.
 ;; Aí na resposta, manda esse elemento sempre junto caso exista
 ;; Precisa testar: O que acontece quando nao vai o id? como atualizar o resto sem o watched
 
-  ;; PAREI AQUI: Fazer agora o results do ripgrep vir da store
-  ;; e manter o valor do input? (pode ser feito via um eventual hx-input que sabe se eh um re-render ou se eh o primeiro render)
