@@ -73,6 +73,7 @@
 
 (defmacro html [& args] (apply create-element "html" args))
 (defmacro head [& args] (apply create-element "head" args))
+(defmacro html-meta [& args] (apply create-element "meta" args))
 (defmacro title [& args] (apply create-element "title" args))
 (defmacro script [& args] (apply create-element "script" args))
 (defmacro title [& args] (apply create-element "title" args))
@@ -86,9 +87,11 @@
 (defmacro h1 [& args] (apply create-element "h1" args))
 (defmacro form [& args] (apply create-element "form" args))
 (defmacro input [& args] (apply create-element "input" args))
+(defmacro label [& args] (apply create-element "label" args))
 (defmacro button [& args] (apply create-element "button" args))
 (defmacro br [& args] (apply create-element "br" args))
 (defmacro strong [& args] (apply create-element "strong" args))
 (defmacro img [& args] (apply create-element "img" args))
+(defmacro style [& args] (apply create-element "style" args))
 
 ;; (clojure.walk/macroexpand-all '(html (head) (title) (div (pre)) (div {:a "b"}) (div)))

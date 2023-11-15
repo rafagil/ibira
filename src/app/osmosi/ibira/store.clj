@@ -8,13 +8,11 @@
    (fn [state action]
      (apply conj {} (map (fn [[store-key reducer]] {store-key (reducer (get state store-key) action)}) reducer-map)))))
 
-;; How it's going to work:
 (defn register-store
   ([reducer] (register-store "default" reducer))
   ([name reducer]
    (swap! store assoc-in [name] {:state (reducer nil {:type "INIT"})
                                  :reducer reducer})))
-
 (defn dispatch 
   ([action] (dispatch "default" action))
   ([store-name action]
@@ -49,8 +47,8 @@
 
 (defn build-watch-macro [store-name watch-vector tag-name props & body]
   (let [store-key (second watch-vector)
-        fn-hash (str (hash body) (hash watch-vector))
         var-name (first watch-vector)
+        fn-hash (str (hash body) (hash watch-vector))
         func-sym (gensym "func")]
     (list 'app.osmosi.ibira.elements/element-with-props-and-children
           tag-name
@@ -73,6 +71,30 @@
       (apply build-watch-macro store-name watch-vector tag props body))
     (apply build-watch-macro "default" watch-vector "span" {} body)))
 
+(def action-map (atom {}))
+(defn store-action [id action]
+  (swap! action-map assoc id action))
+
+(defn read-action [id]
+  (get @action-map id))
+
+(defmacro action [component props the-action & children]
+  (let [action-id-sym (gensym "action-id")
+        action-props-sym (gensym "action-props")]
+    (list 'let [action-id-sym (list 'str (list 'hash the-action))]
+          (list 'swap! 'app.osmosi.ibira.store/action-map 'assoc action-id-sym the-action)
+          (apply list component (conj {:hx-post (list 'str "/dispatcher/" action-id-sym)
+                                       :hx-swap "none"} props) children))))
+
+;; (clojure.walk/macroexpand-all '(action app.osmosi.ibira.elements/div {:hx-aaa "aaa"} {:type "RANDOMIZE"}))
+
+;; rationale:
+;; gera um id aleatorio e grava a action na memoria
+;; Ao ser executada, a action eh removida da memoria
+;; macro precisa retornar:
+;; (let [] (button {props} (swap!) ...children))
+
+;; (action button {:hx-trigger "" :class "abnsolaskin"} {:type "RANDOMIZE"})
 
 ;; Reationale:
 ;; span eh criada com trigger = on-default-users-update
@@ -111,3 +133,8 @@
 ;;                              func-sym (apply list 'fn '[] body))
 ;;                 (list 'store/store-fn store-key-name func-sym)
 ;;                 (list func-sym)))))
+
+
+;; Fazer um combine-reducer especial que guarda as informacoes no banco e gerencia tudo via token
+;; A ideia eh ser um HoF que automagicamente gerencia varias stores baseadas no token
+;; Precisa pensar como o dispatch vai passar o token nesse caso

@@ -1,34 +1,33 @@
 (ns app.osmosi.ibira.middleware
   (:require [app.osmosi.ibira.store :as store]))
 
-;; (defn updated-headers-middleware [handler] 
-;;   (fn [request]
-;;     (if (:original-store request)
-;;       (let [response (handler request)
-;;             headers (assoc (:headers response) "HX-Trigger" (store/get-update-headers (:original-store request)))]
-;;         (assoc response :headers headers))
-;;       (handler request))))
+(defn- begins-with? [substr s]
+  (clojure.string/starts-with? s substr))
 
-;; (defn store-changes-middleware [handler]
-;;   (fn [request]
-;;     (handler (assoc request :original-store (store/get-state)))))
-
-(defn monitor-store-changes [handler]
+(defn- handle-store-updates [handler]
   (fn [request]
-    (let [original-state (store/get-state)
-          response (handler request)
-          update-headers (store/get-update-headers original-state)]
-      (if update-headers
-        (assoc response :headers (assoc (:headers response) "HX-Trigger" update-headers))
-        response))))
-
-(defn handle-store-updates [handler]
-  (fn [request]
-    (if (clojure.string/starts-with? (:uri request) "/store-updates")
+    (condp begins-with? (:uri request)
+      "/store-updates"
       (let [uri (:uri request)
             fn-key (subs uri (inc (clojure.string/last-index-of uri "/")))
             func (store/get-fn fn-key)]
         {:status 200
          :headers {"content-type" "text/html"}
          :body (func)})
+      "/dispatch"
+      (let [uri (:uri request)
+            action-id (subs uri (inc (clojure.string/last-index-of uri "/")))
+            action (store/read-action action-id)]
+        (store/dispatch action)
+        {:status 200 :body ""})
       (handler request))))
+
+(defn ibira-store-middleware [handler]
+  (fn [request]
+    (let [original-state (store/get-state)
+          response ((handle-store-updates handler) request)
+          update-headers (store/get-update-headers original-state)]
+      (if update-headers
+        (assoc response :headers (assoc (:headers response) "HX-Trigger" update-headers))
+        response))))
+
