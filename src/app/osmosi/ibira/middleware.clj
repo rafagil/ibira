@@ -7,12 +7,12 @@
 (defn- parse-request-params [request]
   (let [content-type (get-in request [:headers "content-type"])
         body (slurp (:body request))]
-    (if (= content-type "application/x-www-form-urlencoded")
+    (when (and (not (empty? body))
+               (= content-type "application/x-www-form-urlencoded"))
       (->> (clojure.string/split body #"&")
            (map #(clojure.string/split % #"="))
            flatten
-           (apply hash-map))
-      nil)))
+           (apply hash-map)))))
 
 (defn- handle-store-updates [handler]
   (fn [request]
@@ -27,11 +27,13 @@
       "/dispatch"
       (let [uri (:uri request)
             action-id (subs uri (inc (clojure.string/last-index-of uri "/")))
-            action (store/read-action action-id)]
-        (if (and (:body request)
-                 (= (type action) clojure.lang.PersistentArrayMap))
-          (store/dispatch (assoc action :request-params (parse-request-params request)))
-          (store/dispatch action))
+            act (store/read-action action-id)
+            actions (if (vector? act) act [act])]
+        (doseq [action actions]
+          (if (and (:body request)
+                   (= (type action) clojure.lang.PersistentArrayMap))
+            (store/dispatch (assoc action :request-params (parse-request-params request)))
+            (store/dispatch action)))
         {:status 200 :body ""})
       (handler request))))
 
