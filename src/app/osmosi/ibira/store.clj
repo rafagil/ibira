@@ -45,17 +45,29 @@
 
 (defn get-fn [fn-key] (get @fn-map fn-key))
 
+(defn- gen-trigger [store-name watch-kv]
+  (->> watch-kv
+       (map #(str "on-" store-name "-" (name (second %)) "-update from:body"))
+       (clojure.string/join ",")))
+
+
+(defn- gen-let [store-name watch-kv]
+  (->> watch-kv
+       (map (fn [[k v]] [k (list 'get (list 'app.osmosi.ibira.store/get-state store-name) v)] ) )
+       (apply concat)
+       vec
+       ))
+
 (defn build-watch-macro [store-name watch-vector tag-name props & body]
-  (let [store-key (second watch-vector)
-        var-name (first watch-vector)
+  (let [watch-kv (apply hash-map watch-vector)
         fn-hash (str (hash body) (hash watch-vector))
         func-sym (gensym "func")]
     (list 'app.osmosi.ibira.elements/element-with-props-and-children
           tag-name
-          (conj props (hash-map :hx-trigger (str "on-" store-name "-" (name store-key) "-update from:body")
+          (conj props (hash-map :hx-trigger (gen-trigger store-name watch-kv)
                                 :hx-swap "innerHTML"
                                 :hx-get (str "/store-updates/" fn-hash)))
-          (list 'let (vector func-sym (list 'fn '[] (apply list 'let (vector var-name (list 'get (list 'app.osmosi.ibira.store/get-state store-name) store-key)) body)))
+          (list 'let (vector func-sym (list 'fn '[] (apply list 'let (gen-let store-name watch-kv) body)))
                 (list 'app.osmosi.ibira.store/store-fn fn-hash func-sym)
                 (list func-sym)))))
 

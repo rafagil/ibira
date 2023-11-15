@@ -4,6 +4,16 @@
 (defn- begins-with? [substr s]
   (clojure.string/starts-with? s substr))
 
+(defn- parse-request-params [request]
+  (let [content-type (get-in request [:headers "content-type"])
+        body (slurp (:body request))]
+    (if (= content-type "application/x-www-form-urlencoded")
+      (->> (clojure.string/split body #"&")
+           (map #(clojure.string/split % #"="))
+           flatten
+           (apply hash-map))
+      nil)))
+
 (defn- handle-store-updates [handler]
   (fn [request]
     (condp begins-with? (:uri request)
@@ -18,7 +28,10 @@
       (let [uri (:uri request)
             action-id (subs uri (inc (clojure.string/last-index-of uri "/")))
             action (store/read-action action-id)]
-        (store/dispatch action)
+        (if (and (:body request)
+                 (= (type action) clojure.lang.PersistentArrayMap))
+          (store/dispatch (assoc action :request-params (parse-request-params request)))
+          (store/dispatch action))
         {:status 200 :body ""})
       (handler request))))
 
