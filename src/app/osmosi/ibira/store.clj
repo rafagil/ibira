@@ -10,8 +10,9 @@
 
 (defn register-store
   ([reducer] (register-store "default" reducer))
-  ([name reducer]
-   (swap! store assoc-in [name] {:state (reducer nil {:type "INIT"})
+  ([name reducer] (register-store name reducer (reducer nil {:type "INIT"})))
+  ([name reducer initial-state]
+   (swap! store assoc-in [name] {:state initial-state
                                  :reducer reducer})))
 (defn dispatch 
   ([action] (dispatch "default" action))
@@ -58,9 +59,9 @@
         func-sym (gensym "func")]
     (list 'app.osmosi.ibira.elements/element-with-props-and-children
           tag-name
-          (conj props (hash-map :hx-trigger (gen-trigger store-name watch-kv)
-                                :hx-swap "innerHTML"
-                                :hx-get (str "/store-updates/" fn-hash)))
+          (conj (hash-map :hx-trigger (gen-trigger store-name watch-kv)
+                          :hx-swap "innerHTML"
+                          :hx-get (str "/store-updates/" fn-hash)) props)
           (list 'let (vector func-sym (list 'fn '[] (apply list 'let (gen-let store-name watch-kv) body)))
                 (list 'app.osmosi.ibira.store/store-fn fn-hash func-sym)
                 (list func-sym)))))
@@ -74,17 +75,23 @@
       (apply build-watch-macro store-name watch-vector tag props body))
     (apply build-watch-macro "default" watch-vector "span" {} body)))
 
-(def action-map (atom {}))
-(defn store-action [id action]
-  (swap! action-map assoc id action))
+;; TODO, the new watch macro should look like this (should solve multiple children and be consistent with action):
+;; (watch div [item :asasf] (apsofjaps ofpaosfj apsofj aspfo))
+;; (watch "other" div [item :asasf] (apsofjaps ofpaosfj apsofj aspfo))
 
+(def action-map (atom {}))
 (defn read-action [id]
   (get @action-map id))
 
 (defmacro action [component props the-action & children]
   (let [action-id-sym (gensym "action-id")
         action-props-sym (gensym "action-props")]
-    (list 'let [action-id-sym (list 'str (list 'hash the-action))]
+    (list 'let [action-id-sym (list 'str (list 'hash the-action))
+                action-props-sym props]
           (list 'swap! 'app.osmosi.ibira.store/action-map 'assoc action-id-sym the-action)
-          (apply list component (conj {:hx-post (list 'str "/dispatcher/" action-id-sym)
-                                       :hx-swap "none"} props) children))))
+          (if (clojure.test/function? component)
+            (apply list component (list 'conj {:hx-post (list 'str "/dispatcher/" action-id-sym)
+                                               :hx-swap "none"} action-props-sym) children)
+            (apply list 'app.osmosi.ibira.elements/element-with-props-and-children (name component)
+                   (list 'conj {:hx-post (list 'str "/dispatcher/" action-id-sym)
+                                :hx-swap "none"} action-props-sym) children)))))

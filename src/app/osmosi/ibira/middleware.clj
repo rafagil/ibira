@@ -1,5 +1,7 @@
 (ns app.osmosi.ibira.middleware
-  (:require [app.osmosi.ibira.store :as store]))
+  (:require [app.osmosi.ibira.store :as store]
+            [clojure.walk :refer [keywordize-keys]]
+            [ring.util.codec :refer [form-decode]]))
 
 (defn- begins-with? [substr s]
   (clojure.string/starts-with? s substr))
@@ -9,10 +11,9 @@
         body (slurp (:body request))]
     (when (and (not (empty? body))
                (= content-type "application/x-www-form-urlencoded"))
-      (->> (clojure.string/split body #"&")
-           (map #(clojure.string/split % #"="))
-           flatten
-           (apply hash-map)))))
+      (->> body
+           form-decode
+           keywordize-keys))))
 
 (defn- handle-store-updates [handler]
   (fn [request]

@@ -112,4 +112,4 @@
 ;; Assim: quando usar o with-store, marca o elemento com hx-select e um id.
 ;; Aí na resposta, manda esse elemento sempre junto caso exista
 ;; Precisa testar: O que acontece quando nao vai o id? como atualizar o resto sem o watched
-
+;; usar hx-swap-oob em todos os watches para atualizar tudo o que precisar em um unico request.
