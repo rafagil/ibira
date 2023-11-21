@@ -1,4 +1,6 @@
-(ns app.osmosi.ibira.store)
+(ns app.osmosi.ibira.store
+  (:require [clojure.test]
+            [clojure.string]))
 
 (def store (atom {}))
 

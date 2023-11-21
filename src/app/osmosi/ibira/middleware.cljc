@@ -1,7 +1,7 @@
 (ns app.osmosi.ibira.middleware
   (:require [app.osmosi.ibira.store :as store]
             [clojure.walk :refer [keywordize-keys]]
-            [ring.util.codec :refer [form-decode]]))
+            [app.osmosi.ibira.util.core :refer [form-decode]]))
 
 (defn- begins-with? [substr s]
   (clojure.string/starts-with? s substr))
