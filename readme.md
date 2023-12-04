@@ -1,30 +1,30 @@
-#Ibira
+# Ibira
 
 This is a templating/state management library meant to simplify front-end development based on HTMx. Its main goal it's to be a quick way to develop web applications without much boilerplate and server configuration. It should also stay out of your way when you need to do things differently.
 
 ## How does the template looks like:
 Ibira was created with the idea of using functions (macros) to represent the html document structure:
-```
+```clojure
 (html
   (head
-	  (title "Hello World"))
-	  (body {:class "body"}
-	        (h1 "Hello World")))	
+    (title "Hello World"))
+    (body {:class "body"}
+          (h1 "Hello World")))	
 	
 ```
 It also have some helpers to handle state changes and updates (inspired in Redux):
-```
+```clojure
 (body
-	(watch [counter :counter]
-	  (span (str "The counter is: " counter)))
-	(action button {:hx-trigger "click" :type "button"} {:type "INCREMENT"} "Increment"))
+  (watch [counter :counter]
+    (span (str "The counter is: " counter)))
+  (action button {:hx-trigger "click" :type "button"} {:type "INCREMENT"} "Increment"))
 ```
 In the example above, the `watch` macro will re-render its contents whenever the :counter state changes, and the `action` macro will just dispatch an action with the type "INCREMENT". The request will be made using HTMx, and the Ibira ring middleware will intercept the calls and generate proper headers to update the view.
-Since everything is build inside functions, any clojure code can be used: 
-```
+Since everything is build inside functions, any clojure code can be used and works as expected: 
+```clojure
 (watch [items :items]
-	(ul
-	  (map #(li %) item)))
+  (ul
+    (map #(li %) item)))
 ```
 	
 More Examples of usage can be found in the "examples" directory.
