@@ -19,10 +19,10 @@ It also have some helpers to handle state changes and updates (inspired in Redux
     (span (str "The counter is: " counter)))
   (action button {:hx-trigger "click" :type "button"} {:type "INCREMENT"} "Increment"))
 ```
-In the example above, the `watch` macro will re-render its contents whenever the :counter state changes, and the `action` macro will just dispatch an action with the type "INCREMENT". The request will be made using HTMx, and the Ibira ring middleware will intercept the calls and generate proper headers to update the view.
+In the example above, the `watch` macro will re-render its contents whenever the `:counter` state changes, and the `action` macro will just dispatch an action with the type "INCREMENT". The request will be made using HTMx, and the Ibira ring middleware will intercept the calls and generate proper headers to update the view.
 Since everything is build inside functions, any clojure code can be used and works as expected: 
 ```clojure
-(watch [items :items]
+(watch [item :items]
   (ul
     (map #(li %) item)))
 ```
