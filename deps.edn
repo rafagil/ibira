@@ -17,6 +17,6 @@
    :exec-fn hf.depstar/uberjar
    :exec-args {:jar app.jar
                :aot true
-               :compile-ns [eita.noiz.slides]
-               :main-class "eita.noiz.slides"}}}
+               :compile-ns [htmx]
+               :main-class "htmx"}}}
  }

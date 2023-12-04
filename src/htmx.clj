@@ -67,21 +67,6 @@
             "/results" #(results %)
             "/public/tail.css" #(static %)})
 
-;; Fluxo da coisa toda:
-;; Macro cria uma funcao com o conteudo dela e salva ela usando uma chave aleatoria.
-;; A macro entao executa a funcao passando a store atual e embala em um span com os htmx da vida
-;; A chave eh usada no hx-get (ex: /store-update/chave-aleatoria)
-;; O evento hx-trigger eh o nome da chave (ou chaves) da store (ex. current-user)
-;; Teremos entao dois middlewares:
-;; 1 que intercepta as chamadas /store-update/chave-aleatoria e executa a funcao usando a chave passando a store como parametro
-;; 2 que monitora a store por mudancas e adiciona os headers necessarios onde houveram updates
-;; Testar isso tudo usando memoria mesmo e depois tentar persistir somente as actions
-;; na memoria, fazendo com que precise executar ela de novo se fizer um refresh na pagina
-;; Futuro: Criar um middleware para actions: POST /actions/nome-da-action {body em edn}
-;; Aih pode chamar usando :dispatch {:on :evento /*htmx, ex click*/ :type "mark-read" :params {:param 1 "a"})
-;; Agora falta criar componentes htmx hx-form, hx-button, etc que fazem todo
-;; o malabarismo para fazer o dispatch automagico
-
 (defn page-handler [routes request]
   (let [page (get routes (:uri request))
         headers {"content-type" "text/html"}]
@@ -94,22 +79,12 @@
        :headers headers
        :body "Not Found"})))
 
-(def stop-http (hk-server/run-server (-> (partial page-handler pages)
-                                         monitor-store-changes
-                                         handle-store-updates ) {:port 8082}))
+(defn -main [& args]
+  (println "Running on port 8083")
+  (hk-server/run-server (-> (partial page-handler pages)
+                            ibira-store-middleware) {:port 8082}))
 
-;; Can I use this only as an htmx template? Absolutelly!
-
-;;TODO:
-;;OK Page handler
-;;   on-* events (precisa tratar eles de maneira diferente, preferencialmente via macro)
-;;OK transformar o create-element em macro
-;;   adicionar a store (copiar uma que ja funciona ou basear na do Java/heater)
-;;OK   criar a macro with-store
-;;OK remover os parent-id (desnecessario com a with-store/watch macro)
-;;OK Fazer o map funcionar
-;; Usar o hx-select pra mandar uma resposta só que atualiza todos os componentes visiveis
-;; Assim: quando usar o with-store, marca o elemento com hx-select e um id.
-;; Aí na resposta, manda esse elemento sempre junto caso exista
-;; Precisa testar: O que acontece quando nao vai o id? como atualizar o resto sem o watched
-;; usar hx-swap-oob em todos os watches para atualizar tudo o que precisar em um unico request.
+;;REPL only
+;; (def stop-http
+;;   (hk-server/run-server (-> (partial page-handler pages)
+;;                             ibira-store-middleware) {:port 8082}))

@@ -77,10 +77,6 @@
       (apply build-watch-macro store-name watch-vector tag props body))
     (apply build-watch-macro "default" watch-vector "span" {} body)))
 
-;; TODO, the new watch macro should look like this (should solve multiple children and be consistent with action):
-;; (watch div [item :asasf] (apsofjaps ofpaosfj apsofj aspfo))
-;; (watch "other" div [item :asasf] (apsofjaps ofpaosfj apsofj aspfo))
-
 (def action-map (atom {}))
 (defn read-action [id]
   (get @action-map id))

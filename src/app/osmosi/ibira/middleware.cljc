@@ -8,7 +8,7 @@
 
 (defn- parse-request-params [request]
   (let [content-type (get-in request [:headers "content-type"])
-        body (slurp (:body request))]
+        body (:body request)]
     (when (and (not (empty? body))
                (= content-type "application/x-www-form-urlencoded"))
       (->> body
@@ -31,8 +31,7 @@
             act (store/read-action action-id)
             actions (if (vector? act) act [act])]
         (doseq [action actions]
-          (if (and (:body request)
-                   (= (type action) clojure.lang.PersistentArrayMap))
+          (if (:body request)
             (store/dispatch (assoc action :request-params (parse-request-params request)))
             (store/dispatch action)))
         {:status 200 :body ""})
