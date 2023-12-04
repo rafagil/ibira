@@ -1,0 +1,15 @@
+{:deps
+ {app.osmosi/ibira {:local/root "../../"}
+  http-kit/http-kit {:mvn/version "2.7.0"}}
+
+ :aliases
+  {:depstar
+  {:replace-deps
+   {com.github.seancorfield/depstar {:mvn/version "2.0.206"}}
+   :ns-default core
+   :exec-fn hf.depstar/uberjar
+   :exec-args {:jar app.jar
+               :aot true
+               :compile-ns [core]
+               :main-class "core"}}}}
+
