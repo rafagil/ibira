@@ -1,0 +1,3 @@
+{:deps
+ {org.clojure/clojurescript {:mvn/version "1.11.54"}
+  app.osmosi/ibira {:local/root "../ibira"}}}
