@@ -30,7 +30,7 @@ Since everything is build inside functions, any clojure code can be used and wor
 More Examples of usage can be found in the "examples" directory.
 
 ## What types of app can be done with Ibira?
-Any web app should be possible to benefit from Ibira, but the main things I beliete it's going to be really useful are:
+Any web app can use Ibira (even non web apps that need to render html for any reason), but the main things I believe it's going to help a lot are:
 * Front-end for IoT projects
 * Dashboards/Monitoring Apps (single state across multiple clients)
 * Electron Apps
