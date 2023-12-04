@@ -49,6 +49,7 @@ The basic functionality works and I'm using on some of my personal projects, but
 
 ## Future
 * Improve documentation!
+* Add automated tests
 * Avoid multiple requests to update different elements on the page
 * Fix issues with map on ClojureScript
 * General improvements based on usage.
