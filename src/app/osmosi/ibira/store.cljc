@@ -16,6 +16,9 @@
   ([name reducer initial-state]
    (swap! store assoc-in [name] {:state initial-state
                                  :reducer reducer})))
+(defn unregister-store [name]
+  (swap! store dissoc name))
+
 (defn dispatch 
   ([action] (dispatch "default" action))
   ([store-name action]
@@ -27,10 +30,13 @@
   ([] (get-state "default"))
   ([name] (get-in @store [name :state])))
 
+(defn is-store-registered? [name]
+  (contains? @store name))
+
 (defn get-update-headers
   ([original-state] (get-update-headers "default" original-state))
   ([store-name original-state]
-   (->> (get-state)
+   (->> (get-state store-name)
         (filter (fn [[k v]] (not= v (get original-state k)) ))
         (map first)
         (map #(str "on-" store-name "-" (name %) "-update"))
@@ -43,10 +49,9 @@
 (defn get-fn [fn-key] (get @fn-map fn-key))
 
 (defn- gen-trigger [store-name watch-kv]
-  (->> watch-kv
-       (map #(str "on-" store-name "-" (name (second %)) "-update from:body"))
-       (clojure.string/join ",")))
-
+  (let [values (mapv second watch-kv)
+        map-fn (list 'fn ['i] (list 'str "on-" store-name "-" (list 'name 'i) "-update from:body"))]
+    (list 'clojure.string/join "," (list 'map map-fn values))))
 
 (defn- gen-let [store-name watch-kv]
   (->> watch-kv
@@ -83,13 +88,14 @@
 
 (defmacro action [component props the-action & children]
   (let [action-id-sym (gensym "action-id")
-        action-props-sym (gensym "action-props")]
+        action-props-sym (gensym "action-props")
+        store-name (or (:store props) "default")]
     (list 'let [action-id-sym (list 'str (list 'hash the-action))
-                action-props-sym props]
+                action-props-sym (dissoc props :store)]
           (list 'swap! 'app.osmosi.ibira.store/action-map 'assoc action-id-sym the-action)
           (if (clojure.test/function? component)
-            (apply list component (list 'conj {:hx-post (list 'str "/dispatcher/" action-id-sym)
+            (apply list component (list 'conj {:hx-post (list 'str "/dispatcher/" store-name "/" action-id-sym)
                                                :hx-swap "none"} action-props-sym) children)
             (apply list 'app.osmosi.ibira.elements/element-with-props-and-children (name component)
-                   (list 'conj {:hx-post (list 'str "/dispatcher/" action-id-sym)
+                   (list 'conj {:hx-post (list 'str "/dispatcher/" store-name "/" action-id-sym)
                                 :hx-swap "none"} action-props-sym) children)))))
