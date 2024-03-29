@@ -23,9 +23,13 @@
       (let [uri (:uri request)
             fn-key (last (s/split uri #"/"))
             func (store/get-fn fn-key)]
-        {:status 200
-         :headers {"content-type" "text/html"}
-         :body (func)})
+        (if func
+          {:status 200
+           :headers {"content-type" "text/html"}
+           :body (func)}
+          {:status 500
+           :headers {"content-type" "text/html"}
+           :body "update function not found"}))
       "/dispatch"
       (let [uri (:uri request)
             [store-name action-id] (take-last 2 (s/split uri #"/"))

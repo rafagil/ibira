@@ -34,7 +34,7 @@ Any web app can use Ibira (even non web apps that need to render html for any re
 * Front-end for IoT projects
 * Dashboards/Monitoring Apps (single state across multiple clients)
 * Electron Apps
-* Offline PWAs (the goal is to support WebAssembly in the future, maybe using ClojureDart)
+* Offline PWAs (one of the goals is to support WebAssembly in the future, maybe using ClojureDart)
 
 ## Features
 * The template "functions" (html, head, etc..) are in fact macros with the purpose of doing the "parsing" during compile time, avoiding unecessary checks during runtime. At runtime, they're just functions that concatenate strings to build the template.
@@ -54,6 +54,6 @@ The basic functionality works and I'm using on some of my personal projects, but
 * Fix issues with map on ClojureScript
 * General improvements based on usage.
 * Html Escaping support.
-* Maybe improve the `watch` macro to make it more consistent with the `action` macro and allow for multiple children
+* DONE improve the `watch` macro to make it more consistent with the `action` macro (multiple children are not possible, so must wrap in a (list))
 * Maybe create a small tool to bootstrap projects.
 * Add mandatory animated gifs!

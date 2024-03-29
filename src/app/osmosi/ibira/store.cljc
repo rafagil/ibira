@@ -60,27 +60,39 @@
        vec
        ))
 
-(defn build-watch-macro [store-name watch-vector tag-name props & body]
+(defn build-watch-macro [store-name watch-vector component props & body]
   (let [watch-kv (apply hash-map watch-vector)
         fn-hash (str (hash body) (hash watch-vector))
         func-sym (gensym "func")]
-    (list 'app.osmosi.ibira.elements/element-with-props-and-children
-          tag-name
-          (conj (hash-map :hx-trigger (gen-trigger store-name watch-kv)
-                          :hx-swap "innerHTML"
-                          :hx-get (str "/store-updates/" fn-hash)) props)
-          (list 'let (vector func-sym (list 'fn '[] (apply list 'let (gen-let store-name watch-kv) body)))
+    (list component
+          (conj {:hx-trigger (gen-trigger store-name watch-kv)
+                 :hx-swap "innerHTML"
+                 :hx-get (str "/store-updates/" fn-hash)}
+                props)
+          (list 'let [func-sym (list 'fn '[] (apply list 'let (gen-let store-name watch-kv) body))]
                 (list 'app.osmosi.ibira.store/store-fn fn-hash func-sym)
                 (list func-sym)))))
 
-(defmacro watch [watch-vector & body]
-  (if (= (type (first body)) clojure.lang.PersistentArrayMap)
-    (let [tag (or (:tag-name (first body)) "span")
-          store-name (or (:store (first body)) "default")
-          props (dissoc (first body) :tag-name :store)
-          body (rest body)]
-      (apply build-watch-macro store-name watch-vector tag props body))
-    (apply build-watch-macro "default" watch-vector "span" {} body)))
+(defn- span-watch
+  ([watch-vector body] (span-watch watch-vector {} body))
+  ([watch-vector props body]
+   (let [store-name (or (:store props) "default")]
+     (build-watch-macro store-name watch-vector 'app.osmosi.ibira.elements/span props body))))
+
+(defn- component-watch
+  ([component watch-vector body] (component-watch component watch-vector {} body))
+  ([component watch-vector props body]
+   (let [store-name (or (:store props) "default")]
+     (build-watch-macro store-name watch-vector component props body))))
+
+(defmacro watch [& args]
+  (let [expected-signatures {[clojure.lang.PersistentVector clojure.lang.PersistentList] span-watch
+                             [clojure.lang.PersistentVector clojure.lang.PersistentArrayMap clojure.lang.PersistentList] span-watch
+                             [clojure.lang.Symbol clojure.lang.PersistentVector clojure.lang.PersistentList] component-watch
+                             [clojure.lang.Symbol clojure.lang.PersistentVector clojure.lang.PersistentArrayMap clojure.lang.PersistentList] component-watch}
+        signature (mapv type args)
+        match (expected-signatures signature)]
+    (if match (apply match args) (throw (Exception. (str "Invalid Signature: " signature))))))
 
 (def action-map (atom {}))
 (defn read-action [id]
@@ -99,3 +111,4 @@
             (apply list 'app.osmosi.ibira.elements/element-with-props-and-children (name component)
                    (list 'conj {:hx-post (list 'str "/dispatcher/" store-name "/" action-id-sym)
                                 :hx-swap "none"} action-props-sym) children)))))
+
